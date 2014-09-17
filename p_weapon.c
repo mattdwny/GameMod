@@ -520,9 +520,9 @@ GRENADE
 ======================================================================
 */
 
-#define GRENADE_TIMER		3.0
-#define GRENADE_MINSPEED	400
-#define GRENADE_MAXSPEED	800
+#define GRENADE_TIMER		1.0
+#define GRENADE_MINSPEED	800
+#define GRENADE_MAXSPEED	1600
 
 void weapon_grenade_fire (edict_t *ent, qboolean held)
 {
@@ -706,7 +706,7 @@ void weapon_grenadelauncher_fire (edict_t *ent)
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_grenade (ent, start, forward, damage, 600, 2.5, radius);
+	fire_grenade (ent, start, forward, damage, 1000, 0.5, radius);
 
 	gi.WriteByte (svc_muzzleflash);
 	gi.WriteShort (ent-g_edicts);

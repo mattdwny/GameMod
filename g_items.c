@@ -25,7 +25,7 @@ static int	jacket_armor_index;
 static int	combat_armor_index;
 static int	body_armor_index;
 static int	power_screen_index;
-static int	power_shield_index;
+static int	power_shield_index; //10.200.20.201
 
 #define HEALTH_IGNORE_MAX	1
 #define HEALTH_TIMED		2

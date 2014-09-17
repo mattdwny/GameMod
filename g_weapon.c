@@ -379,6 +379,8 @@ fire_grenade
 static void Grenade_Explode (edict_t *ent)
 {
 	vec3_t		origin;
+	vec3_t      toSky = {0,0,0};
+	int         nextDmg = ent->dmg/4;
 	int			mod;
 
 	if (ent->owner->client)
@@ -389,7 +391,7 @@ static void Grenade_Explode (edict_t *ent)
 	{
 		float	points;
 		vec3_t	v;
-		vec3_t	dir;
+		vec3_t	dir = {0,0,1};
 
 		VectorAdd (ent->enemy->mins, ent->enemy->maxs, v);
 		VectorMA (ent->enemy->s.origin, 0.5, v, v);
@@ -429,6 +431,23 @@ static void Grenade_Explode (edict_t *ent)
 	}
 	gi.WritePosition (origin);
 	gi.multicast (ent->s.origin, MULTICAST_PHS);
+
+	if(nextDmg > 1)
+	{
+		int i;
+		float length;
+
+		for(i = 0; i < 4; i++)
+		{
+			toSky[0] = rand() % 21 - 10; //-.5 to .5 so left and right a little
+			toSky[1] = rand() % 21 - 10; //-.5 to .5 so left and right a little
+			toSky[2] = rand() % 50 + 50; // .5 to 1 so up a little or a lot
+
+			VectorNormalize(toSky);
+
+			fire_grenade(ent->owner, ent->s.origin, toSky, nextDmg, 800, 2.5, 400);
+		}
+	}
 
 	G_FreeEdict (ent);
 }
@@ -476,9 +495,9 @@ void fire_grenade (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int s
 	grenade = G_Spawn();
 	VectorCopy (start, grenade->s.origin);
 	VectorScale (aimdir, speed, grenade->velocity);
-	VectorMA (grenade->velocity, 200 + crandom() * 10.0, up, grenade->velocity);
-	VectorMA (grenade->velocity, crandom() * 10.0, right, grenade->velocity);
-	VectorSet (grenade->avelocity, 300, 300, 300);
+	//VectorMA (grenade->velocity, 200 + crandom() * 10.0, up, grenade->velocity);
+	//VectorMA (grenade->velocity, crandom() * 10.0, right, grenade->velocity);
+	VectorSet (grenade->avelocity, 1800, 1800, 1800);
 	grenade->movetype = MOVETYPE_BOUNCE;
 	grenade->clipmask = MASK_SHOT;
 	grenade->solid = SOLID_BBOX;
@@ -509,9 +528,9 @@ void fire_grenade2 (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int 
 	grenade = G_Spawn();
 	VectorCopy (start, grenade->s.origin);
 	VectorScale (aimdir, speed, grenade->velocity);
-	VectorMA (grenade->velocity, 200 + crandom() * 10.0, up, grenade->velocity);
-	VectorMA (grenade->velocity, crandom() * 10.0, right, grenade->velocity);
-	VectorSet (grenade->avelocity, 300, 300, 300);
+	//VectorMA (grenade->velocity, 200 + crandom() * 10.0, up, grenade->velocity);
+	//VectorMA (grenade->velocity, crandom() * 10.0, right, grenade->velocity);
+	VectorSet (grenade->avelocity, 1800, 1800, 1800);
 	grenade->movetype = MOVETYPE_BOUNCE;
 	grenade->clipmask = MASK_SHOT;
 	grenade->solid = SOLID_BBOX;
