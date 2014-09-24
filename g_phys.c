@@ -302,7 +302,7 @@ SV_AddGravity
 */
 void SV_AddGravity (edict_t *ent)
 {
-	ent->velocity[2] -= ent->gravity * sv_gravity->value * FRAMETIME;
+	ent->velocity[2] -= ent->gravity * sv_gravity->value * FRAMETIME / 2;
 }
 
 /*
@@ -681,17 +681,24 @@ void SV_Physics_Toss (edict_t *ent)
 
 	SV_CheckVelocity (ent);
 
-// add gravity
+// move angles
+	VectorMA (ent->s.angles, FRAMETIME, ent->avelocity, ent->s.angles);
+
+	// add gravity the first time:  http://www.niksula.hut.fi/~hkankaan/Homepages/gravity.html
 	if (ent->movetype != MOVETYPE_FLY
 	&& ent->movetype != MOVETYPE_FLYMISSILE)
 		SV_AddGravity (ent);
 
-// move angles
-	VectorMA (ent->s.angles, FRAMETIME, ent->avelocity, ent->s.angles);
-
-// move origin
+	// move origin
 	VectorScale (ent->velocity, FRAMETIME, move);
 	trace = SV_PushEntity (ent, move);
+
+	// add gravity the second time
+	if (ent->movetype != MOVETYPE_FLY
+	&& ent->movetype != MOVETYPE_FLYMISSILE)
+		SV_AddGravity (ent);
+
+
 	if (!ent->inuse)
 		return;
 
