@@ -1171,6 +1171,7 @@ void PutClientInServer (edict_t *ent)
 	client->ps.pmove.origin[0] = spawn_origin[0]*8;
 	client->ps.pmove.origin[1] = spawn_origin[1]*8;
 	client->ps.pmove.origin[2] = spawn_origin[2]*8;
+	client->speedMod = 5; //TODO XXX: this is useful!!!
 
 	if (deathmatch->value && ((int)dmflags->value & DF_FIXED_FOV))
 	{
@@ -1565,8 +1566,82 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	int		i, j;
 	pmove_t	pm;
 
+
+
+	/* Beginning of additions */
+
+
+
+	float speedModifier, t;
+	vec3_t velo;
+	vec3_t  end, forward, right, up, add;
+
+	speedModifier = ent->client->speedMod * 0.2;
+	//Figure out speed
+	VectorClear (velo);
+	AngleVectors (ent->client->v_angle, forward, right, up);
+	VectorScale(forward, ucmd->forwardmove*speedModifier, end);
+	VectorAdd(end,velo,velo);
+	AngleVectors (ent->client->v_angle, forward, right, up);
+	VectorScale(right, ucmd->sidemove*speedModifier, end);
+	VectorAdd(end,velo,velo);
+	//if not in water set it up so they aren't moving up or down when they press forward
+	if (ent->waterlevel == 0) velo[2] = 0;
+	if (ent->waterlevel==1)//feet are in the water
+	{
+		//Water slows you down or at least I think it should
+		velo[0] *= 0.875;
+		velo[1] *= 0.875;
+		velo[2] *= 0.875;
+		speedModifier *= 0.875;
+	}
+	else if (ent->waterlevel==2)//waist is in the water
+	{
+		//Water slows you down or at least I think it should
+		velo[0] *= 0.75;
+		velo[1] *= 0.75;
+		velo[2] *= 0.75;
+		speedModifier *= 0.75;
+	}
+	else if (ent->waterlevel==3)//whole body is in the water
+	{
+		//Water slows you down or at least I think it should
+		velo[0] *= 0.6;
+		velo[1] *= 0.6;
+		velo[2] *= 0.6;
+		speedModifier *= 0.6;
+	}
+	if (ent->groundentity)//add 
+	VectorAdd(velo,ent->velocity,ent->velocity);
+	else if (ent->waterlevel)
+	VectorAdd(velo,ent->velocity,ent->velocity);
+	else
+	{
+		//Allow for a little movement but not as much
+		velo[0] *= 0.25;
+		velo[1] *= 0.25;
+		velo[2] *= 0.25;
+		VectorAdd(velo,ent->velocity,ent->velocity);
+	}
+	//Make sure not going to fast. This slows down grapple too
+	t = VectorLength2(ent->velocity);
+	if (t > 300*speedModifier)
+	{
+		VectorScale2(ent->velocity, 300 * speedModifier / t, ent->velocity);
+	}
+ 
+	//Set these to 0 so pmove thinks we aren't pressing forward or sideways since we are handling all the player forward and sideways speeds
+	ucmd->forwardmove = 0;
+	ucmd->sidemove = 0;
+
 	level.current_entity = ent;
 	client = ent->client;
+
+
+
+	/* End of additions */
+
+
 
 	if (level.intermissiontime)
 	{

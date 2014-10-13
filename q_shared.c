@@ -753,6 +753,19 @@ vec_t VectorLength(vec3_t v)
 	return length;
 }
 
+vec_t VectorLength2(vec3_t v)
+{
+	int		i;
+	float	length;
+	
+	length = 0;
+	for (i=0 ; i< 2 ; i++)
+		length += v[i]*v[i];
+	length = sqrt (length);		// FIXME
+
+	return length;
+}
+
 void VectorInverse (vec3_t v)
 {
 	v[0] = -v[0];
@@ -767,6 +780,11 @@ void VectorScale (vec3_t in, vec_t scale, vec3_t out)
 	out[2] = in[2]*scale;
 }
 
+void VectorScale2 (vec3_t in, vec_t scale, vec3_t out)
+{
+	out[0] = in[0]*scale;
+	out[1] = in[1]*scale;
+}
 
 int Q_log2(int val)
 {

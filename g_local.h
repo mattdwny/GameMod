@@ -914,6 +914,8 @@ struct gclient_s
 
 	int			machinegun_shots;	// for weapon raising
 
+	float		speedMod; /* the speed modifier, which is changed based on one's heartrate */
+
 	// animation vars
 	int			anim_end;
 	int			anim_priority;
@@ -1008,6 +1010,15 @@ struct edict_s
 
 	vec3_t		velocity;
 	vec3_t		avelocity;
+
+	float		heartrate; /* the position and velocity of one's heartrate */
+	float		heartveloc;
+
+	float		maxHeartrate;
+	float		minHeartrate;
+	float		maxVelocity;
+	float		maxAccel;
+
 	int			mass;
 	float		air_finished;
 	float		gravity;		// per entity gravity multiplier (1.0 is normal)
