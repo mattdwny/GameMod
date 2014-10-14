@@ -365,7 +365,16 @@ void G_SetStats (edict_t *ent)
 	// health
 	//
 	ent->client->ps.stats[STAT_HEALTH_ICON] = level.pic_health;
+
 	ent->client->ps.stats[STAT_HEALTH] = ent->health;
+
+
+
+	
+	//Added stuff for heartrate
+	ent->client->ps.stats[STAT_HEARTRATE_ICON] = gi.imageindex ("i_fixme");;
+	ent->client->ps.stats[STAT_HEARTRATE] = ent->heartrate;
+
 
 	//
 	// ammo

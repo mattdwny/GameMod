@@ -1,6 +1,8 @@
 #include "g_local.h"
 #include "m_player.h"
 
+#define DELTA .1
+
 void ClientUserinfoChanged (edict_t *ent, char *userinfo);
 
 void SP_misc_teleporter_dest (edict_t *ent);
@@ -1572,7 +1574,11 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 
 
-	float speedModifier, t;
+	float speedModifier, speedMag, maxRealSpeed, effort; //do you even THINK I care about efficiency? these are byte's on the dollar HASHTAG DEFINE YOUR FACE
+	float maxHeartrate, minHeartrate, heartRange, targetVelocity;
+	float maxV, minV, V;
+	float maxA, minA, A;
+	
 	vec3_t velo;
 	vec3_t  end, forward, right, up, add;
 
@@ -1624,11 +1630,15 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		VectorAdd(velo,ent->velocity,ent->velocity);
 	}
 	//Make sure not going to fast. This slows down grapple too
-	t = VectorLength2(ent->velocity);
-	if (t > 300*speedModifier)
+	speedMag = VectorLength2(ent->velocity);
+	maxRealSpeed = 300*speedModifier*(ent->heartrate + 185)/200;
+	if (speedMag > maxRealSpeed)
 	{
-		VectorScale2(ent->velocity, 300 * speedModifier / t, ent->velocity);
+		VectorScale2(ent->velocity, maxRealSpeed / speedMag, ent->velocity);
 	}
+
+	if     (ent->velocity[2] >  900) ent->velocity[2] = 900;
+	else if(ent->velocity[2] < -900) ent->velocity[2] = -900;
  
 	//Set these to 0 so pmove thinks we aren't pressing forward or sideways since we are handling all the player forward and sideways speeds
 	ucmd->forwardmove = 0;
@@ -1637,7 +1647,43 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	level.current_entity = ent;
 	client = ent->client;
 
+	//based on speed magnitude, adjust heartrate 
+	speedMag = VectorLength2(ent->velocity);
+	//effort is 1 if the player is sprinting, 0 if standing still
+	effort = speedMag / maxRealSpeed;
 
+	gi.bprintf(PRINT_HIGH,"/%f/",effort);
+	
+	maxHeartrate = 200; //I lie to you constantly
+	minHeartrate = 30; //I'm starting to see a trend...
+	minV = -10; //maybe this is the max?
+	maxV = 10;
+	minA = -2;
+	maxA = 2;
+	heartRange = maxHeartrate - minHeartrate;
+	
+	//based on effort, where heartrate wants to be
+	targetVelocity = (minV/heartRange)*(ent->heartrate - minHeartrate) + maxV*effort; //OK NOW I'M JUST MAKING SHIT UP
+
+	//accelerate the heartrate so that it reaches targetVelocity
+	if       (targetVelocity > ent->heartveloc) A = maxA;
+	else if  (targetVelocity < ent->heartveloc) A = minA;
+	else										A = 0;
+	
+	//enforce acceleration
+	
+	ent->heartveloc += A*DELTA;
+	
+	ent->heartrate += ent->heartveloc*DELTA; //a velocity times a time is a change in position
+	
+	if       (ent->heartveloc < minV) ent->heartveloc = minV;
+	else if  (ent->heartveloc > maxV) ent->heartveloc = maxV;
+
+	if       (ent->heartrate < minHeartrate) ent->heartrate = minHeartrate;
+	else if  (ent->heartrate > maxHeartrate) ent->heartrate = maxHeartrate;
+
+
+	//GUIBPM.text = Mathf.Round(heart.heartrate + heart.random).ToString();
 
 	/* End of additions */
 
@@ -1717,6 +1763,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 		if (ent->groundentity && !pm.groundentity && (pm.cmd.upmove >= 10) && (pm.waterlevel == 0))
 		{
+			ent->velocity[2] = 200*((ent->heartrate + 40)/100);
 			gi.sound(ent, CHAN_VOICE, gi.soundindex("*jump1.wav"), 1, ATTN_NORM, 0);
 			PlayerNoise(ent, ent->s.origin, PNOISE_SELF);
 		}

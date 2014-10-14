@@ -735,6 +735,15 @@ char *dm_statusbar =
 "	pic	9 "
 "endif "
 
+"if 19 "                // If the player has heartrate (spaces are important at beginning and end for parsing!!!)
+" yb      -24 "         //place the heartrate at the bottom (minus the icon/text size)
+" xv	  -100 "		//place the heartrate 100 virtual units to the left of the center
+" num     3       19 "  //the item being placed is a 3 digit number and it is (19 == #define STAT_HEARTRATE)
+" xv	  -50	 "		//place the icon 50 virtual units left of center
+" pic     18 "			//the picture is stored in (18 == #define STAT_HEARTRATE_ICON)
+"endif "   
+
+
 //  help / weapon icon 
 "if 11 "
 "	xv	148 "
