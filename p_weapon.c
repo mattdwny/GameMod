@@ -11,6 +11,19 @@ static byte		is_silenced;
 void weapon_grenade_fire (edict_t *ent, qboolean held);
 
 
+float heartRand(edict_t* ent) //for heartrate stuff
+{
+	float result;
+	float heartFactor;
+
+	if(ent->heartrate < 30) heartFactor = 0;
+	else					heartFactor = (ent->heartrate-30) / 100;
+	
+	result = crandom()*heartFactor*0.1;
+
+	return result;
+}
+
 static void P_ProjectSource (gclient_t *client, vec3_t point, vec3_t distance, vec3_t forward, vec3_t right, vec3_t result)
 {
 	vec3_t	_distance;
@@ -677,6 +690,8 @@ void Weapon_Grenade (edict_t *ent)
 			ent->client->weaponstate = WEAPON_READY;
 		}
 	}
+	
+	ent->heartrate += 30;
 }
 
 /*
@@ -692,10 +707,12 @@ void weapon_grenadelauncher_fire (edict_t *ent)
 	vec3_t	offset;
 	vec3_t	forward, right;
 	vec3_t	start;
-	int		damage = 120;
+	int		damage = 80;
 	float	radius;
 
-	radius = damage+40;
+	ent->client->weaponSpeedMod -= 0.25;
+
+	radius = damage+200;
 	if (is_quad)
 		damage *= 4;
 
@@ -706,7 +723,7 @@ void weapon_grenadelauncher_fire (edict_t *ent)
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_grenade (ent, start, forward, damage, 600, 2.5, radius);
+	fire_grenade (ent, start, forward, damage, 1200, 2.5, radius);
 
 	gi.WriteByte (svc_muzzleflash);
 	gi.WriteShort (ent-g_edicts);
@@ -719,6 +736,8 @@ void weapon_grenadelauncher_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index]--;
+
+	ent->heartrate += 10;
 }
 
 void Weapon_GrenadeLauncher (edict_t *ent)
@@ -745,9 +764,11 @@ void Weapon_RocketLauncher_Fire (edict_t *ent)
 	float	damage_radius;
 	int		radius_damage;
 
-	damage = 100 + (int)(random() * 20.0);
-	radius_damage = 120;
-	damage_radius = 120;
+	ent->client->weaponSpeedMod -= 0.45;
+
+	damage = 70 + (int)(random() * 5.0);
+	radius_damage = 50;
+	damage_radius = 360;
 	if (is_quad)
 	{
 		damage *= 4;
@@ -761,7 +782,7 @@ void Weapon_RocketLauncher_Fire (edict_t *ent)
 
 	VectorSet(offset, 8, 8, ent->viewheight-8);
 	P_ProjectSource (ent->client, ent->s.origin, offset, forward, right, start);
-	fire_rocket (ent, start, forward, damage, 650, damage_radius, radius_damage);
+	fire_rocket (ent, start, forward, damage, 1000, damage_radius, radius_damage);
 
 	// send muzzle flash
 	gi.WriteByte (svc_muzzleflash);
@@ -775,6 +796,8 @@ void Weapon_RocketLauncher_Fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index]--;
+
+	ent->heartrate += 5;
 }
 
 void Weapon_RocketLauncher (edict_t *ent)
@@ -810,7 +833,7 @@ void Blaster_Fire (edict_t *ent, vec3_t g_offset, int damage, qboolean hyper, in
 	VectorScale (forward, -2, ent->client->kick_origin);
 	ent->client->kick_angles[0] = -1;
 
-	fire_blaster (ent, start, forward, damage, 1000, effect, hyper);
+	fire_blaster (ent, start, forward, damage, 2200, effect, hyper);
 
 	// send muzzle flash
 	gi.WriteByte (svc_muzzleflash);
@@ -835,6 +858,8 @@ void Weapon_Blaster_Fire (edict_t *ent)
 		damage = 10;
 	Blaster_Fire (ent, vec3_origin, damage, false, EF_BLASTER);
 	ent->client->ps.gunframe++;
+
+	ent->heartrate += 8;
 }
 
 void Weapon_Blaster (edict_t *ent)
@@ -852,6 +877,10 @@ void Weapon_HyperBlaster_Fire (edict_t *ent)
 	vec3_t	offset;
 	int		effect;
 	int		damage;
+
+	ent->client->weaponSpeedMod -= 0.05;
+
+	if(ent->client->weaponSpeedMod < .5) ent->client->weaponSpeedMod = .5;
 
 	ent->client->weapon_sound = gi.soundindex("weapons/hyprbl1a.wav");
 
@@ -913,6 +942,7 @@ void Weapon_HyperBlaster_Fire (edict_t *ent)
 		ent->client->weapon_sound = 0;
 	}
 
+	ent->heartrate += 4;
 }
 
 void Weapon_HyperBlaster (edict_t *ent)
@@ -940,6 +970,9 @@ void Machinegun_Fire (edict_t *ent)
 	int			damage = 8;
 	int			kick = 2;
 	vec3_t		offset;
+
+	ent->client->weaponSpeedMod -= 0.05;
+	if(ent->client->weaponSpeedMod < .8) ent->client->weaponSpeedMod = .8;
 
 	if (!(ent->client->buttons & BUTTON_ATTACK))
 	{
@@ -1015,6 +1048,8 @@ void Machinegun_Fire (edict_t *ent)
 		ent->s.frame = FRAME_attack1 - (int) (random()+0.25);
 		ent->client->anim_end = FRAME_attack8;
 	}
+
+	ent->heartrate += 3;
 }
 
 void Weapon_Machinegun (edict_t *ent)
@@ -1035,6 +1070,11 @@ void Chaingun_Fire (edict_t *ent)
 	vec3_t		offset;
 	int			damage;
 	int			kick = 2;
+
+	ent->client->weaponSpeedMod -= 0.07;
+	if(ent->client->weaponSpeedMod < .1) ent->client->weaponSpeedMod = .1;
+
+	//gi.bprintf(PRINT_HIGH,"wepMod: %f", ent->client->weaponSpeedMod);
 
 	if (deathmatch->value)
 		damage = 6;
@@ -1086,13 +1126,17 @@ void Chaingun_Fire (edict_t *ent)
 		shots = 1;
 	else if (ent->client->ps.gunframe <= 14)
 	{
+		kick = 1;
 		if (ent->client->buttons & BUTTON_ATTACK)
 			shots = 2;
 		else
 			shots = 1;
 	}
 	else
+	{
+		kick = 0;
 		shots = 3;
+	}
 
 	if (ent->client->pers.inventory[ent->client->ammo_index] < shots)
 		shots = ent->client->pers.inventory[ent->client->ammo_index];
@@ -1116,20 +1160,23 @@ void Chaingun_Fire (edict_t *ent)
 
 	for (i=0 ; i<3 ; i++)
 	{
-		ent->client->kick_origin[i] = crandom() * 0.35;
-		ent->client->kick_angles[i] = crandom() * 0.7;
+		ent->client->kick_origin[i] = crandom() * 0.35 * ent->client->weaponSpeedMod;
+		ent->client->kick_angles[i] = crandom() * 0.7 * ent->client->weaponSpeedMod;
 	}
 
 	for (i=0 ; i<shots ; i++)
 	{
+		VectorClear(offset);
 		// get start / end positions
 		AngleVectors (ent->client->v_angle, forward, right, up);
-		r = 7 + crandom()*4;
-		u = crandom()*4;
+		r = (7 + crandom()*4) * ent->client->weaponSpeedMod * heartRand(ent);
+		u = (crandom()*4) * ent->client->weaponSpeedMod * heartRand(ent);
 		VectorSet(offset, 0, r, u + ent->viewheight-8);
 		P_ProjectSource (ent->client, ent->s.origin, offset, forward, right, start);
 
-		fire_bullet (ent, start, forward, damage, kick, DEFAULT_BULLET_HSPREAD, DEFAULT_BULLET_VSPREAD, MOD_CHAINGUN);
+		fire_bullet (ent, start, forward, 3*(damage - 4*ent->client->weaponSpeedMod)*heartRand(ent), kick,
+			DEFAULT_BULLET_HSPREAD * ent->client->weaponSpeedMod,
+			DEFAULT_BULLET_VSPREAD * ent->client->weaponSpeedMod, MOD_CHAINGUN);
 	}
 
 	// send muzzle flash
@@ -1142,6 +1189,8 @@ void Chaingun_Fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index] -= shots;
+
+	ent->heartrate += 5;
 }
 
 
@@ -1169,6 +1218,8 @@ void weapon_shotgun_fire (edict_t *ent)
 	vec3_t		offset;
 	int			damage = 4;
 	int			kick = 8;
+
+	ent->client->weaponSpeedMod -= 0.2;
 
 	if (ent->client->ps.gunframe == 9)
 	{
@@ -1206,6 +1257,8 @@ void weapon_shotgun_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index]--;
+
+	ent->heartrate += 20;
 }
 
 void Weapon_Shotgun (edict_t *ent)
@@ -1225,6 +1278,8 @@ void weapon_supershotgun_fire (edict_t *ent)
 	vec3_t		v;
 	int			damage = 6;
 	int			kick = 12;
+
+	ent->client->weaponSpeedMod -= 0.35;
 
 	AngleVectors (ent->client->v_angle, forward, right, NULL);
 
@@ -1260,6 +1315,8 @@ void weapon_supershotgun_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index] -= 2;
+
+		ent->heartrate += 40;
 }
 
 void Weapon_SuperShotgun (edict_t *ent)
@@ -1285,8 +1342,18 @@ void weapon_railgun_fire (edict_t *ent)
 	vec3_t		start;
 	vec3_t		forward, right;
 	vec3_t		offset;
+	vec3_t		randVec;
 	int			damage;
 	int			kick;
+	int i;
+
+	for(i = 0; i < 3; ++i)
+	{
+		randVec[i] = heartRand(ent);
+	}
+
+
+	ent->client->weaponSpeedMod = 0;
 
 	if (deathmatch->value)
 	{	// normal damage is too extreme in dm
@@ -1312,6 +1379,7 @@ void weapon_railgun_fire (edict_t *ent)
 
 	VectorSet(offset, 0, 7,  ent->viewheight-8);
 	P_ProjectSource (ent->client, ent->s.origin, offset, forward, right, start);
+	VectorAdd(forward, randVec, forward);
 	fire_rail (ent, start, forward, damage, kick);
 
 	// send muzzle flash
@@ -1325,6 +1393,8 @@ void weapon_railgun_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index]--;
+
+	ent->heartrate += 20;
 }
 
 
@@ -1413,3 +1483,4 @@ void Weapon_BFG (edict_t *ent)
 
 
 //======================================================================
+

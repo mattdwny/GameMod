@@ -2,6 +2,8 @@
 #include "m_player.h"
 
 #define DELTA .1
+#define EFFICIENCY_CYCLES 10000
+#define IS_SET(a,b) ( (a) & (b) )
 
 void ClientUserinfoChanged (edict_t *ent, char *userinfo);
 
@@ -528,6 +530,10 @@ void player_die (edict_t *self, edict_t *inflictor, edict_t *attacker, int damag
 	self->client->invincible_framenum = 0;
 	self->client->breather_framenum = 0;
 	self->client->enviro_framenum = 0;
+	self->client->twoJump_framenum = 0;
+	self->client->maxHR_framenum = 0;
+	self->client->regen_framenum = 0;
+	self->client->lowGrav_framenum = 0;
 	self->flags &= ~FL_POWER_ARMOR;
 
 	if (self->health < -40)
@@ -1174,6 +1180,7 @@ void PutClientInServer (edict_t *ent)
 	client->ps.pmove.origin[1] = spawn_origin[1]*8;
 	client->ps.pmove.origin[2] = spawn_origin[2]*8;
 	client->speedMod = 5; //TODO XXX: this is useful!!!
+	client->weaponSpeedMod = 1;
 
 	if (deathmatch->value && ((int)dmflags->value & DF_FIXED_FOV))
 	{
@@ -1565,26 +1572,56 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 {
 	gclient_t	*client;
 	edict_t	*other;
-	int		i, j;
+	int		i, j, time;
 	pmove_t	pm;
-
-
 
 	/* Beginning of additions */
 
-
+	static int modder;
 
 	float speedModifier, speedMag, maxRealSpeed, effort; //do you even THINK I care about efficiency? these are byte's on the dollar HASHTAG DEFINE YOUR FACE
 	float maxHeartrate, minHeartrate, heartRange, targetVelocity;
 	float maxV, minV, V;
 	float maxA, minA, A;
-	
+
 	vec3_t velo;
 	vec3_t  end, forward, right, up, add;
 
+	ent->client->twoJump_framenum -= 0.02;
+	ent->client->maxHR_framenum -= 0.02;
+	ent->client->regen_framenum -= 0.02;
+	ent->client->lowGrav_framenum -= 0.02;
+	ent->client->flyingFish_framenum -= 0.02;
+	ent->lastJump += .02;
+
+	modder = (modder + 1) % 50;
+
+	if(ent->client->maxHR_framenum > 0) ent->heartrate = 301;
+	if(ent->client->regen_framenum > 0 && modder == 0 && ent->health < 100) ent->health += 1;
+	if(ent->client->lowGrav_framenum > 0)
+	{
+		ent->gravity = 0.6;
+	}
+	else
+	{
+		ent->gravity = 1;
+	}
+
+	VectorClear(velo);
+	for(time = EFFICIENCY_CYCLES; time >= 0; time--) //go back in time, hence the minus minus
+	{
+		VectorMA(velo,0,velo,velo); 
+	}
+
+	ent->client->weaponSpeedMod += 0.005;
+
+	if(ent->client->weaponSpeedMod > 1)
+	{
+		ent->client->weaponSpeedMod = 1;
+	}
+
 	speedModifier = ent->client->speedMod * 0.2;
 	//Figure out speed
-	VectorClear (velo);
 	AngleVectors (ent->client->v_angle, forward, right, up);
 	VectorScale(forward, ucmd->forwardmove*speedModifier, end);
 	VectorAdd(end,velo,velo);
@@ -1593,53 +1630,59 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	VectorAdd(end,velo,velo);
 	//if not in water set it up so they aren't moving up or down when they press forward
 	if (ent->waterlevel == 0) velo[2] = 0;
-	if (ent->waterlevel==1)//feet are in the water
-	{
-		//Water slows you down or at least I think it should
-		velo[0] *= 0.875;
-		velo[1] *= 0.875;
-		velo[2] *= 0.875;
-		speedModifier *= 0.875;
-	}
-	else if (ent->waterlevel==2)//waist is in the water
-	{
-		//Water slows you down or at least I think it should
-		velo[0] *= 0.75;
-		velo[1] *= 0.75;
-		velo[2] *= 0.75;
-		speedModifier *= 0.75;
-	}
-	else if (ent->waterlevel==3)//whole body is in the water
-	{
-		//Water slows you down or at least I think it should
-		velo[0] *= 0.6;
-		velo[1] *= 0.6;
-		velo[2] *= 0.6;
-		speedModifier *= 0.6;
-	}
-	if (ent->groundentity)//add 
-	VectorAdd(velo,ent->velocity,ent->velocity);
-	else if (ent->waterlevel)
-	VectorAdd(velo,ent->velocity,ent->velocity);
-	else
-	{
-		//Allow for a little movement but not as much
-		velo[0] *= 0.25;
-		velo[1] *= 0.25;
-		velo[2] *= 0.25;
-		VectorAdd(velo,ent->velocity,ent->velocity);
-	}
-	//Make sure not going to fast. This slows down grapple too
-	speedMag = VectorLength2(ent->velocity);
-	maxRealSpeed = 300*speedModifier*(ent->heartrate + 185)/200;
-	if (speedMag > maxRealSpeed)
-	{
-		VectorScale2(ent->velocity, maxRealSpeed / speedMag, ent->velocity);
-	}
 
-	if     (ent->velocity[2] >  900) ent->velocity[2] = 900;
-	else if(ent->velocity[2] < -900) ent->velocity[2] = -900;
- 
+	VectorAdd(velo,ent->velocity,ent->velocity); //add player velocity to velocity
+
+	//limit player speed
+	if (ent->waterlevel != 0)//body is in the water
+	{
+		speedMag = VectorLength(ent->velocity);
+		maxRealSpeed = 350*speedModifier*(ent->heartrate + 185)/200;
+		
+		if (speedMag > maxRealSpeed)
+		{
+			if(IS_SET(ent->client->ps.pmove.pm_flags, PMF_ON_GROUND)) VectorScale(ent->velocity, maxRealSpeed / speedMag * ent->client->weaponSpeedMod, ent->velocity);
+			else													  VectorScale(ent->velocity, maxRealSpeed / speedMag,								ent->velocity);
+		}
+
+		if(ent->waterlevel == 1 && ent->velocity[2] > 100 && ent->client->flyingFish_framenum > 0) VectorScale(ent->velocity,2,ent->velocity);
+	}
+	else //regular
+	{
+		speedMag = VectorLength2(ent->velocity);
+		maxRealSpeed = 300*speedModifier*(ent->heartrate + 185)/200;
+
+		if (speedMag > maxRealSpeed)
+		{
+			if(IS_SET(ent->client->ps.pmove.pm_flags, PMF_ON_GROUND)) VectorScale2(ent->velocity, maxRealSpeed / speedMag * ent->client->weaponSpeedMod, ent->velocity);
+			else													  VectorScale2(ent->velocity, maxRealSpeed / speedMag,								ent->velocity);
+		}
+	}
+	//gi.centerprintf(ent,"%f",ent->s.origin[1]);
+	
+	if(ent->waterlevel != 0 && ent->s.origin[1] < 450)
+	{
+		if(ent->client->flyingFish_framenum <= 0)
+		{
+			ent->velocity[0] *= .5;
+			ent->velocity[1] *= .5;
+			ent->velocity[2] *= .5;
+		}
+
+		if(ent->waterlevel == 3)
+		{
+			if(ent->client->flyingFish_framenum <= 0)
+			{
+				gi.centerprintf(ent,"You are not a fish, live with yourself");
+				if(modder % 25 == 0) ent->health -= 1;
+				gi.soundindex ("*gurp1.wav");
+			}
+			else
+			{
+				gi.centerprintf(ent,"Sunlight Yellow Overdrive!");
+			}
+		}
+	}
 	//Set these to 0 so pmove thinks we aren't pressing forward or sideways since we are handling all the player forward and sideways speeds
 	ucmd->forwardmove = 0;
 	ucmd->sidemove = 0;
@@ -1652,18 +1695,18 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	//effort is 1 if the player is sprinting, 0 if standing still
 	effort = speedMag / maxRealSpeed;
 
-	gi.bprintf(PRINT_HIGH,"/%f/",effort);
+	//gi.bprintf(PRINT_HIGH,"/%f/",effort);
 	
-	maxHeartrate = 200; //I lie to you constantly
-	minHeartrate = 30; //I'm starting to see a trend...
-	minV = -10; //maybe this is the max?
+	maxHeartrate = 200; //I lie to you constantly 
+	minHeartrate = 30; //starting to see a trend...
+	minV = -10; 
 	maxV = 10;
-	minA = -2;
-	maxA = 2;
+	minA = -6;
+	maxA = 1;
 	heartRange = maxHeartrate - minHeartrate;
 	
 	//based on effort, where heartrate wants to be
-	targetVelocity = (minV/heartRange)*(ent->heartrate - minHeartrate) + maxV*effort; //OK NOW I'M JUST MAKING SHIT UP
+	targetVelocity = (minV/heartRange)*(ent->heartrate - minHeartrate) + maxV*effort; //random equation ftw
 
 	//accelerate the heartrate so that it reaches targetVelocity
 	if       (targetVelocity > ent->heartveloc) A = maxA;
@@ -1679,11 +1722,8 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	if       (ent->heartveloc < minV) ent->heartveloc = minV;
 	else if  (ent->heartveloc > maxV) ent->heartveloc = maxV;
 
-	if       (ent->heartrate < minHeartrate) ent->heartrate = minHeartrate;
-	else if  (ent->heartrate > maxHeartrate) ent->heartrate = maxHeartrate;
-
-
-	//GUIBPM.text = Mathf.Round(heart.heartrate + heart.random).ToString();
+	if       (ent->heartrate < 10) ent->heartrate = 10; //hardcoded maxes and mins
+	else if  (ent->heartrate > 300) ent->heartrate = 300;
 
 	/* End of additions */
 
@@ -1721,7 +1761,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		else
 			client->ps.pmove.pm_type = PM_NORMAL;
 
-		client->ps.pmove.gravity = sv_gravity->value;
+		client->ps.pmove.gravity = sv_gravity->value * ent->gravity;
 		pm.s = client->ps.pmove;
 
 		for (i=0 ; i<3 ; i++)
@@ -1761,12 +1801,29 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		client->resp.cmd_angles[1] = SHORT2ANGLE(ucmd->angles[1]);
 		client->resp.cmd_angles[2] = SHORT2ANGLE(ucmd->angles[2]);
 
+		//gi.bprintf(PRINT_HIGH,"PRE double: %d last: %f\n",ent->doubleJump,ent->lastJump);
+
 		if (ent->groundentity && !pm.groundentity && (pm.cmd.upmove >= 10) && (pm.waterlevel == 0))
 		{
+
+
+
+			//gi.bprintf(PRINT_HIGH,"Jumping: double: %d last: %f\n",ent->doubleJump,ent->lastJump);
+			ent->lastJump = 0;
+			ent->doubleJump = 1;
 			ent->velocity[2] = 200*((ent->heartrate + 40)/100);
 			gi.sound(ent, CHAN_VOICE, gi.soundindex("*jump1.wav"), 1, ATTN_NORM, 0);
 			PlayerNoise(ent, ent->s.origin, PNOISE_SELF);
 		}
+		else if(pm.waterlevel == 0 && ent->doubleJump && 0 < ent->client->twoJump_framenum &&  ucmd->upmove > 10 && ent->lastJump > .75)
+		{
+			//gi.bprintf(PRINT_HIGH,"Double jumping: double: %d last: %f\n",ent->doubleJump,ent->lastJump);
+			ent->doubleJump = 0;
+			ent->velocity[2] = 200*((ent->heartrate + 40)/100);
+			gi.sound(ent, CHAN_VOICE, gi.soundindex("*jump1.wav"), 1, ATTN_NORM, 0);
+			PlayerNoise(ent, ent->s.origin, PNOISE_SELF);
+		}
+		//gi.bprintf(PRINT_HIGH,"POST double: %d last: %f\n",ent->doubleJump,ent->lastJump);
 
 		ent->viewheight = pm.viewheight;
 		ent->waterlevel = pm.waterlevel;

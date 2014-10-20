@@ -500,24 +500,26 @@ void SP_func_plat (edict_t *ent)
 	gi.setmodel (ent, ent->model);
 
 	ent->blocked = plat_blocked;
-
-	if (!ent->speed)
+	ent->speed = 500; //what if platforms went SANIC fast?
+	/*if (!ent->speed)
 		ent->speed = 20;
 	else
-		ent->speed *= 0.1;
+		ent->speed *= 0.1;*/
 
-	if (!ent->accel)
+	ent->accel = 12;
+	/*if (!ent->accel)
 		ent->accel = 5;
 	else
-		ent->accel *= 0.1;
+		ent->accel *= 0.1;*/
 
-	if (!ent->decel)
+	ent->decel = 12;
+	/*if (!ent->decel)
 		ent->decel = 5;
 	else
-		ent->decel *= 0.1;
+		ent->decel *= 0.1;*/
 
 	if (!ent->dmg)
-		ent->dmg = 2;
+		ent->dmg = 1000;
 
 	if (!st.lip)
 		st.lip = 8;

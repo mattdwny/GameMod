@@ -915,6 +915,7 @@ struct gclient_s
 	int			machinegun_shots;	// for weapon raising
 
 	float		speedMod; /* the speed modifier, which is changed based on one's heartrate */
+	float		weaponSpeedMod;
 
 	// animation vars
 	int			anim_end;
@@ -927,6 +928,12 @@ struct gclient_s
 	float		invincible_framenum;
 	float		breather_framenum;
 	float		enviro_framenum;
+
+	float		twoJump_framenum;
+	float		maxHR_framenum;
+	float		regen_framenum;
+	float		lowGrav_framenum;
+	float		flyingFish_framenum;
 
 	qboolean	grenade_blew_up;
 	float		grenade_time;
@@ -1014,10 +1021,10 @@ struct edict_s
 	float		heartrate; /* the position and velocity of one's heartrate */
 	float		heartveloc;
 
-	float		maxHeartrate;
-	float		minHeartrate;
-	float		maxVelocity;
-	float		maxAccel;
+	int			doubleJump; //can the player double jump?
+	float		lastJump;
+
+
 
 	int			mass;
 	float		air_finished;

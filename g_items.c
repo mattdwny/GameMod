@@ -35,11 +35,13 @@ static int	quad_drop_timeout_hack;
 
 //======================================================================
 
+
 /*
 ===============
 GetItemByIndex
 ===============
 */
+
 gitem_t	*GetItemByIndex (int index)
 {
 	if (index == 0 || index >= game.num_items)
@@ -433,6 +435,13 @@ qboolean Add_Ammo (edict_t *ent, gitem_t *item, int count)
 	if (!ent->client)
 		return false;
 
+	if(item->tag == AMMO_SLUGS)
+	{
+		gi.centerprintf(ent,"FLYING FISH");
+		ent->client->flyingFish_framenum = 99999;
+		gi.sound(ent, CHAN_ITEM, gi.soundindex("items/m_health.wav"), 1, ATTN_NORM, 0);
+	}
+
 	if (item->tag == AMMO_BULLETS)
 		max = ent->client->pers.max_bullets;
 	else if (item->tag == AMMO_SHELLS)
@@ -536,11 +545,15 @@ void MegaHealth_think (edict_t *self)
 
 qboolean Pickup_Health (edict_t *ent, edict_t *other)
 {
-	if (!(ent->style & HEALTH_IGNORE_MAX))
+	/*if (!(ent->style & HEALTH_IGNORE_MAX))
 		if (other->health >= other->max_health)
-			return false;
+			return false;*/
 
-	other->health += ent->count;
+	if (!(ent->spawnflags & DROPPED_ITEM) && (deathmatch->value))
+			SetRespawn (ent, 10);
+
+	return true;
+	//other->health += ent->count;
 
 	if (!(ent->style & HEALTH_IGNORE_MAX))
 	{
@@ -769,13 +782,30 @@ void Touch_Item (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *surf
 		if (ent->item->pickup == Pickup_Health)
 		{
 			if (ent->count == 2)
+			{
+				gi.centerprintf(other,"Double Jump");
+				other->client->twoJump_framenum = 30;
+				other->doubleJump = 1;
 				gi.sound(other, CHAN_ITEM, gi.soundindex("items/s_health.wav"), 1, ATTN_NORM, 0);
+			}
 			else if (ent->count == 10)
+			{
+				gi.centerprintf(other,"Low Gravity");
+				other->client->lowGrav_framenum = 30;
 				gi.sound(other, CHAN_ITEM, gi.soundindex("items/n_health.wav"), 1, ATTN_NORM, 0);
+			}
 			else if (ent->count == 25)
+			{
+				gi.centerprintf(other,"Regeneration");
+				other->client->regen_framenum = 30;
 				gi.sound(other, CHAN_ITEM, gi.soundindex("items/l_health.wav"), 1, ATTN_NORM, 0);
+			}
 			else // (ent->count == 100)
+			{
+				gi.centerprintf(other,"Super Adrenaline");
+				other->client->maxHR_framenum = 30;
 				gi.sound(other, CHAN_ITEM, gi.soundindex("items/m_health.wav"), 1, ATTN_NORM, 0);
+			}
 		}
 		else if (ent->item->pickup_sound)
 		{
