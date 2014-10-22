@@ -5,6 +5,9 @@
 #define EFFICIENCY_CYCLES 10000
 #define IS_SET(a,b) ( (a) & (b) )
 
+//aj269 Your codes works and is properly legible, there are a few things that should be done
+//to increase it but otherwise I see no faults. 
+
 void ClientUserinfoChanged (edict_t *ent, char *userinfo);
 
 void SP_misc_teleporter_dest (edict_t *ent);
@@ -1596,6 +1599,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 	modder = (modder + 1) % 50;
 
+	//aj269 -- Put brackets on all your ifs.
 	if(ent->client->maxHR_framenum > 0) ent->heartrate = 301;
 	if(ent->client->regen_framenum > 0 && modder == 0 && ent->health < 100) ent->health += 1;
 	if(ent->client->lowGrav_framenum > 0)
@@ -1606,7 +1610,8 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	{
 		ent->gravity = 1;
 	}
-
+	
+	//aj269 - Yo this does nothing, do remove, plzthxbai
 	VectorClear(velo);
 	for(time = EFFICIENCY_CYCLES; time >= 0; time--) //go back in time, hence the minus minus
 	{
@@ -1697,6 +1702,12 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 	//gi.bprintf(PRINT_HIGH,"/%f/",effort);
 	
+
+
+	//aj269 -- yo the heartrate stuff should be a function
+
+
+	//aj269 -- misleading var name, heartrate range is 10-300
 	maxHeartrate = 200; //I lie to you constantly 
 	minHeartrate = 30; //starting to see a trend...
 	minV = -10; 
@@ -1724,6 +1735,8 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 	if       (ent->heartrate < 10) ent->heartrate = 10; //hardcoded maxes and mins
 	else if  (ent->heartrate > 300) ent->heartrate = 300;
+
+	//aj269 -- up to here is a function
 
 	/* End of additions */
 

@@ -1,3 +1,4 @@
+
 // g_weapon.c
 
 #include "g_local.h"
@@ -16,7 +17,8 @@ float heartRand(edict_t* ent) //for heartrate stuff
 	float result;
 	float heartFactor;
 
-	if(ent->heartrate < 30) heartFactor = 0;
+
+	if(ent->heartrate < 30) heartFactor = 0; //aj269 - Put Brackets more legible 
 	else					heartFactor = (ent->heartrate-30) / 100;
 	
 	result = crandom()*heartFactor*0.1;
