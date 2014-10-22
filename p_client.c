@@ -2,11 +2,7 @@
 #include "m_player.h"
 
 #define DELTA .1
-#define EFFICIENCY_CYCLES 10000
 #define IS_SET(a,b) ( (a) & (b) )
-
-//aj269 Your codes works and is properly legible, there are a few things that should be done
-//to increase it but otherwise I see no faults. 
 
 void ClientUserinfoChanged (edict_t *ent, char *userinfo);
 
@@ -1571,6 +1567,42 @@ This will be called once for each client frame, which will
 usually be a couple times for each server frame.
 ==============
 */
+
+void ChangeHeartrate(edict_t* ent, float effort)
+{
+	float highHeartrate, lowHeartrate, heartRange, targetVelocity;
+	float maxV, minV, V;
+	float maxA, minA, A;
+
+	highHeartrate = 200;
+	lowHeartrate = 30;
+	minV = -10; 
+	maxV = 10;
+	minA = -6;
+	maxA = 1;
+	heartRange = highHeartrate - lowHeartrate;
+	
+	//based on effort, where heartrate wants to be
+	targetVelocity = (minV/heartRange)*(ent->heartrate - lowHeartrate) + maxV*effort; //random equation ftw
+
+	//accelerate the heartrate so that it reaches targetVelocity
+	if       (targetVelocity > ent->heartveloc) A = maxA;
+	else if  (targetVelocity < ent->heartveloc) A = minA;
+	else										A = 0;
+	
+	//enforce acceleration
+	
+	ent->heartveloc += A*DELTA;
+	
+	ent->heartrate += ent->heartveloc*DELTA; //a velocity times a time is a change in position
+	
+	if       (ent->heartveloc < minV) ent->heartveloc = minV;
+	else if  (ent->heartveloc > maxV) ent->heartveloc = maxV;
+
+	if       (ent->heartrate < 10) ent->heartrate = 10; //hardcoded maxes and mins
+	else if  (ent->heartrate > 300) ent->heartrate = 300;
+}
+
 void ClientThink (edict_t *ent, usercmd_t *ucmd)
 {
 	gclient_t	*client;
@@ -1582,10 +1614,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 	static int modder;
 
-	float speedModifier, speedMag, maxRealSpeed, effort; //do you even THINK I care about efficiency? these are byte's on the dollar HASHTAG DEFINE YOUR FACE
-	float maxHeartrate, minHeartrate, heartRange, targetVelocity;
-	float maxV, minV, V;
-	float maxA, minA, A;
+	float speedModifier, speedMag, maxRealSpeed, effort;
 
 	vec3_t velo;
 	vec3_t  end, forward, right, up, add;
@@ -1599,9 +1628,8 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 
 	modder = (modder + 1) % 50;
 
-	//aj269 -- Put brackets on all your ifs.
-	if(ent->client->maxHR_framenum > 0) ent->heartrate = 301;
-	if(ent->client->regen_framenum > 0 && modder == 0 && ent->health < 100) ent->health += 1;
+	if(ent->client->maxHR_framenum > 0) /*[*/ ent->heartrate = 301; /*]*/
+	if(ent->client->regen_framenum > 0 && modder == 0 && ent->health < 100) /*[*/ ent->health += 1; /*]*/
 	if(ent->client->lowGrav_framenum > 0)
 	{
 		ent->gravity = 0.6;
@@ -1611,13 +1639,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 		ent->gravity = 1;
 	}
 	
-	//aj269 - Yo this does nothing, do remove, plzthxbai
 	VectorClear(velo);
-	for(time = EFFICIENCY_CYCLES; time >= 0; time--) //go back in time, hence the minus minus
-	{
-		VectorMA(velo,0,velo,velo); 
-	}
-
 	ent->client->weaponSpeedMod += 0.005;
 
 	if(ent->client->weaponSpeedMod > 1)
@@ -1700,47 +1722,7 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 	//effort is 1 if the player is sprinting, 0 if standing still
 	effort = speedMag / maxRealSpeed;
 
-	//gi.bprintf(PRINT_HIGH,"/%f/",effort);
-	
-
-
-	//aj269 -- yo the heartrate stuff should be a function
-
-
-	//aj269 -- misleading var name, heartrate range is 10-300
-	maxHeartrate = 200; //I lie to you constantly 
-	minHeartrate = 30; //starting to see a trend...
-	minV = -10; 
-	maxV = 10;
-	minA = -6;
-	maxA = 1;
-	heartRange = maxHeartrate - minHeartrate;
-	
-	//based on effort, where heartrate wants to be
-	targetVelocity = (minV/heartRange)*(ent->heartrate - minHeartrate) + maxV*effort; //random equation ftw
-
-	//accelerate the heartrate so that it reaches targetVelocity
-	if       (targetVelocity > ent->heartveloc) A = maxA;
-	else if  (targetVelocity < ent->heartveloc) A = minA;
-	else										A = 0;
-	
-	//enforce acceleration
-	
-	ent->heartveloc += A*DELTA;
-	
-	ent->heartrate += ent->heartveloc*DELTA; //a velocity times a time is a change in position
-	
-	if       (ent->heartveloc < minV) ent->heartveloc = minV;
-	else if  (ent->heartveloc > maxV) ent->heartveloc = maxV;
-
-	if       (ent->heartrate < 10) ent->heartrate = 10; //hardcoded maxes and mins
-	else if  (ent->heartrate > 300) ent->heartrate = 300;
-
-	//aj269 -- up to here is a function
-
-	/* End of additions */
-
-
+	ChangeHeartrate(ent, effort);
 
 	if (level.intermissiontime)
 	{
